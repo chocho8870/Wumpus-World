@@ -24,7 +24,6 @@ class WumpusWorld:
 
             world.append(line)
 
-        # 객체 배치
         world[1][4] = self.GOLD
         world[2][2] = self.WUMPUS
         world[3][3] = self.PIT
