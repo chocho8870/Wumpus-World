@@ -26,8 +26,8 @@
 ## 향후 구현 예정 기능
 
 - Shoot 기능
-- Grab 기능
-- Climb 기능
-- Gold 획득 후 탈출 로직
 - Wumpus 제거 기능
-- 최종 게임 종료 조건 구현
+- Grab 기능
+- Gold 획득 후 탈출 로직
+- Climb 기능
+- 최종 게임 종료 UI 구현
