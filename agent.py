@@ -20,6 +20,14 @@ class Agent:
         self.breeze_cells = set()
         self.stench_cells = set()
 
+        # 화살 수 및 Wumpus 처치 여부
+        self.arrows = 3
+        self.wumpus_destroyed = False
+
+        # Glitter 감지 여부
+        self.has_glitter = False
+        self.grab = False
+
         # DFS용 stack
         self.path_stack = []
 
@@ -105,6 +113,10 @@ class Agent:
         current = (self.row, self.col)
         self.remember_current_position()
 
+        self.has_glitter = "Glitter" in percepts
+        if "Scream" in percepts:
+            self.on_scream()
+
         neighbors = self.get_valid_neighbors(self.row, self.col, world)
 
         # Breeze가 없으면 주변에는 Pit이 없음
@@ -148,6 +160,26 @@ class Agent:
                 ):
                     self.possible_wumpus.add(cell)
 
+        # Stench 주변 후보가 하나뿐이면 Wumpus 위치 확정
+        for stench_cell in self.stench_cells:
+            candidates = [
+                cell for cell in self.get_valid_neighbors(stench_cell[0], stench_cell[1], world)
+                if cell not in self.no_wumpus_cells and cell not in self.confirmed_wumpus
+            ]
+            if len(candidates) == 1:
+                self.confirmed_wumpus.add(candidates[0])
+                self.safe_cells.discard(candidates[0])
+
+        # Breeze 주변 후보가 하나뿐이면 Pit 위치 확정
+        for breeze_cell in self.breeze_cells:
+            candidates = [
+                cell for cell in self.get_valid_neighbors(breeze_cell[0], breeze_cell[1], world)
+                if cell not in self.no_pit_cells and cell not in self.confirmed_pit
+            ]
+            if len(candidates) == 1:
+                self.confirmed_pit.add(candidates[0])
+                self.safe_cells.discard(candidates[0])
+
         self.danger_cells = (
             self.confirmed_pit
             | self.confirmed_wumpus
@@ -170,6 +202,44 @@ class Agent:
                     self.danger_cells.discard(cell)
                     self.possible_pit.discard(cell)
                     self.possible_wumpus.discard(cell)
+
+    def on_scream(self):
+        """Scream 퍼셉트 수신 시 Wumpus 관련 지식을 초기화한다."""
+        self.wumpus_destroyed = True
+        self.confirmed_wumpus.clear()
+        self.possible_wumpus.clear()
+        self.stench_cells.clear()
+        self.danger_cells = self.confirmed_pit | self.possible_pit
+
+    def is_wumpus_in_front(self):
+        """현재 방향 직선 상에 confirmed_wumpus 위치가 있으면 True."""
+        if not self.confirmed_wumpus or self.wumpus_destroyed or self.arrows == 0:
+            return False
+        r, c = self.row, self.col
+        while True:
+            if self.direction == "NORTH":
+                r -= 1
+            elif self.direction == "SOUTH":
+                r += 1
+            elif self.direction == "WEST":
+                c -= 1
+            elif self.direction == "EAST":
+                c += 1
+            if r < 0 or r > 4 or c < 0 or c > 4:
+                return False
+            if (r, c) in self.confirmed_wumpus:
+                return True
+
+    def get_direction_to_wumpus(self):
+        """Wumpus와 같은 행 또는 열일 때 그 방향을 반환. 정렬 안 됐으면 None."""
+        if not self.confirmed_wumpus or self.wumpus_destroyed:
+            return None
+        wr, wc = next(iter(self.confirmed_wumpus))
+        if self.row == wr:
+            return "WEST" if wc < self.col else "EAST"
+        if self.col == wc:
+            return "NORTH" if wr < self.row else "SOUTH"
+        return None
 
     def mark_death_cell(self, row, col, reason):
         cell = (row, col)
@@ -243,13 +313,8 @@ class Agent:
         return self.direction
 
     def choose_action(self, target):
-        if target is None:
-            return None
-
-        target_direction = self.get_direction_to_target(target)
-
-        if self.direction == target_direction:
-            return "GoForward"
+        if self.has_glitter:
+            return "Grab"
 
         right_turn = {
             "NORTH": "EAST",
@@ -257,6 +322,24 @@ class Agent:
             "SOUTH": "WEST",
             "WEST": "NORTH"
         }
+
+        # Wumpus 확정 시 조준 및 발사 우선
+        if self.arrows > 0 and not self.wumpus_destroyed and self.confirmed_wumpus:
+            if self.is_wumpus_in_front():
+                return "Shoot"
+            shoot_dir = self.get_direction_to_wumpus()
+            if shoot_dir is not None:
+                if right_turn[self.direction] == shoot_dir:
+                    return "TurnRight"
+                return "TurnLeft"
+
+        if target is None:
+            return None
+
+        target_direction = self.get_direction_to_target(target)
+
+        if self.direction == target_direction:
+            return "GoForward"
 
         if right_turn[self.direction] == target_direction:
             return "TurnRight"

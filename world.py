@@ -8,6 +8,8 @@ class WumpusWorld:
         self.PIT = "pit"
         self.GOLD = "gold"
 
+        self.DESTROYED = False
+
         self.world = self.create_world()
 
     def create_world(self):
@@ -45,8 +47,30 @@ class WumpusWorld:
                 percepts.append("Stench")
             elif self.world[r][c] == self.PIT:
                 percepts.append("Breeze")
+        
+        if self.DESTROYED:
+            percepts.append("Scream")
 
         if self.world[row][col] == self.GOLD:
             percepts.append("Glitter")
 
         return percepts
+
+    def shoot(self, row, col, direction):
+        """현재 방향으로 화살을 쏜다. Wumpus를 맞히면 DESTROYED = True, True 반환."""
+        r, c = row, col
+        while True:
+            if direction == "NORTH":
+                r -= 1
+            elif direction == "SOUTH":
+                r += 1
+            elif direction == "WEST":
+                c -= 1
+            elif direction == "EAST":
+                c += 1
+            if self.world[r][c] == self.WALL:
+                return
+            if self.world[r][c] == self.WUMPUS:
+                self.DESTROYED = True
+                self.world[r][c] = self.EMPTY
+                return

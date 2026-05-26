@@ -130,6 +130,7 @@ def auto_step():
 
     # 2. DFS로 다음 목표 칸 선택
     target = agent.choose_target_cell(game.world)
+    
 
     if target is None:
         info_label.config(
@@ -138,21 +139,29 @@ def auto_step():
         draw_world()
         return
 
-    # 3. 목표 칸으로 가기 위한 Action 선택
+    # 3. Action 수행
     action = agent.choose_action(target)
-
-    # 4. Action 수행
     if action == "TurnLeft":
         agent.turn_left()
-        info_label.config(
-            text="Action: TurnLeft / " + make_percept_text(percepts)
-        )
+        if agent.confirmed_wumpus and not agent.wumpus_destroyed:
+            info_label.config(
+                text="Action: TurnLeft / Wumpus 조준 중 / " + make_percept_text(percepts)
+            )
+        else:
+            info_label.config(
+                text="Action: TurnLeft / " + make_percept_text(percepts)
+            )
 
     elif action == "TurnRight":
         agent.turn_right()
-        info_label.config(
-            text="Action: TurnRight / " + make_percept_text(percepts)
-        )
+        if agent.confirmed_wumpus and not agent.wumpus_destroyed:
+            info_label.config(
+                text="Action: TurnRight / Wumpus 조준 중 / " + make_percept_text(percepts)
+            )
+        else:
+            info_label.config(
+                text="Action: TurnRight / " + make_percept_text(percepts)
+            )
 
     elif action == "GoForward":
         next_row, next_col = agent.get_forward_position()
@@ -197,6 +206,29 @@ def auto_step():
 
             info_label.config(
                 text="Action: GoForward / " + make_percept_text(new_percepts)
+            )
+
+    elif action == "Grab":
+        game.world[row][col] = game.EMPTY
+        agent.has_glitter = False
+        agent.grab = True
+        info_label.config(
+            text="Action: Grab / Gold 획득!"
+        )
+
+    elif action == "Shoot":
+        agent.arrows -= 1
+        game.shoot(row, col, agent.get_direction())
+        new_percepts = game.get_percepts(row, col)
+        hit = "Scream" in new_percepts
+        if hit:
+            agent.on_scream()
+            info_label.config(
+                text=f"Action: Shoot / Scream! Wumpus 처치 성공! (남은 화살: {agent.arrows})"
+            )
+        else:
+            info_label.config(
+                text=f"Action: Shoot / 빗나감 (남은 화살: {agent.arrows})"
             )
 
     draw_world()
