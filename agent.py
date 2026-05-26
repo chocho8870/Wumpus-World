@@ -4,7 +4,6 @@ class Agent:
         self.col = 1
         self.direction = "EAST"
 
-        # 기억 정보
         self.visited = set()
         self.safe_cells = {(4, 1)}
 
@@ -13,6 +12,7 @@ class Agent:
 
         self.possible_pit = set()
         self.possible_wumpus = set()
+
         self.confirmed_pit = set()
         self.confirmed_wumpus = set()
         self.danger_cells = set()
@@ -20,19 +20,18 @@ class Agent:
         self.breeze_cells = set()
         self.stench_cells = set()
 
-        # 화살 수 및 Wumpus 처치 여부
         self.arrows = 3
         self.wumpus_destroyed = False
 
-        # Glitter 감지 여부
         self.has_glitter = False
         self.grab = False
+        self.returning_home = False
 
-        # DFS용 stack
         self.path_stack = []
-
-        # 현재 이동 목표 칸
         self.current_target = None
+
+        self.move_history = []
+        self.return_path = []
 
     def get_position(self):
         return self.row, self.col
@@ -41,12 +40,15 @@ class Agent:
         return self.direction
 
     def reset_position(self):
-        # 죽어도 기억은 유지, 위치와 방향만 초기화
         self.row = 4
         self.col = 1
         self.direction = "EAST"
+
         self.path_stack = []
         self.current_target = None
+        self.move_history = []
+        self.return_path = []
+        self.returning_home = False
 
     def turn_left(self):
         directions = ["NORTH", "WEST", "SOUTH", "EAST"]
@@ -69,7 +71,17 @@ class Agent:
             return self.row, self.col + 1
 
     def go_forward(self):
+        previous_position = (self.row, self.col)
+
         self.row, self.col = self.get_forward_position()
+        current_position = (self.row, self.col)
+
+        if self.returning_home:
+            if self.return_path and current_position == self.return_path[0]:
+                self.return_path.pop(0)
+        else:
+            self.move_history.append(previous_position)
+
         self.current_target = None
 
     def get_neighbors(self, row=None, col=None):
@@ -79,10 +91,10 @@ class Agent:
             col = self.col
 
         return [
-            (row - 1, col),  # NORTH
-            (row, col + 1),  # EAST
-            (row + 1, col),  # SOUTH
-            (row, col - 1)   # WEST
+            (row - 1, col),
+            (row, col + 1),
+            (row + 1, col),
+            (row, col - 1)
         ]
 
     def get_valid_neighbors(self, row, col, world):
@@ -102,6 +114,7 @@ class Agent:
 
         self.visited.add(current)
         self.safe_cells.add(current)
+
         self.no_pit_cells.add(current)
         self.no_wumpus_cells.add(current)
 
@@ -111,22 +124,21 @@ class Agent:
 
     def reasoning(self, percepts, world):
         current = (self.row, self.col)
-        self.remember_current_position()
 
+        self.remember_current_position()
         self.has_glitter = "Glitter" in percepts
+
         if "Scream" in percepts:
             self.on_scream()
 
         neighbors = self.get_valid_neighbors(self.row, self.col, world)
 
-        # Breeze가 없으면 주변에는 Pit이 없음
         if "Breeze" not in percepts:
             for cell in neighbors:
                 self.no_pit_cells.add(cell)
         else:
             self.breeze_cells.add(current)
 
-        # Stench가 없으면 주변에는 Wumpus가 없음
         if "Stench" not in percepts:
             for cell in neighbors:
                 self.no_wumpus_cells.add(cell)
@@ -140,45 +152,67 @@ class Agent:
         self.possible_pit.clear()
         self.possible_wumpus.clear()
 
-        # Breeze를 느낀 칸들의 주변을 Pit 후보로 판단
+        if not self.wumpus_destroyed:
+            wumpus_candidate_sets = []
+
+            for stench_cell in self.stench_cells:
+                candidates = set()
+
+                for cell in self.get_valid_neighbors(stench_cell[0], stench_cell[1], world):
+                    if (
+                        cell not in self.safe_cells
+                        and cell not in self.no_wumpus_cells
+                        and cell not in self.confirmed_pit
+                    ):
+                        candidates.add(cell)
+
+                if candidates:
+                    wumpus_candidate_sets.append(candidates)
+                    self.possible_wumpus.update(candidates)
+
+            # 여러 Stench 정보의 교집합으로 Wumpus 위치 확정
+            if wumpus_candidate_sets:
+                common_wumpus = set.intersection(*wumpus_candidate_sets)
+
+                if len(common_wumpus) == 1:
+                    wumpus_cell = next(iter(common_wumpus))
+                    self.confirmed_wumpus.add(wumpus_cell)
+                    self.safe_cells.discard(wumpus_cell)
+                    self.possible_wumpus.discard(wumpus_cell)
+
+        pit_candidate_sets = []
+
         for breeze_cell in self.breeze_cells:
+            candidates = set()
+
             for cell in self.get_valid_neighbors(breeze_cell[0], breeze_cell[1], world):
                 if (
                     cell not in self.safe_cells
                     and cell not in self.no_pit_cells
-                    and cell not in self.confirmed_pit
-                ):
-                    self.possible_pit.add(cell)
-
-        # Stench를 느낀 칸들의 주변을 Wumpus 후보로 판단
-        for stench_cell in self.stench_cells:
-            for cell in self.get_valid_neighbors(stench_cell[0], stench_cell[1], world):
-                if (
-                    cell not in self.safe_cells
-                    and cell not in self.no_wumpus_cells
                     and cell not in self.confirmed_wumpus
                 ):
-                    self.possible_wumpus.add(cell)
+                    candidates.add(cell)
 
-        # Stench 주변 후보가 하나뿐이면 Wumpus 위치 확정
-        for stench_cell in self.stench_cells:
-            candidates = [
-                cell for cell in self.get_valid_neighbors(stench_cell[0], stench_cell[1], world)
-                if cell not in self.no_wumpus_cells and cell not in self.confirmed_wumpus
-            ]
-            if len(candidates) == 1:
-                self.confirmed_wumpus.add(candidates[0])
-                self.safe_cells.discard(candidates[0])
+            if candidates:
+                pit_candidate_sets.append(candidates)
+                self.possible_pit.update(candidates)
 
-        # Breeze 주변 후보가 하나뿐이면 Pit 위치 확정
-        for breeze_cell in self.breeze_cells:
-            candidates = [
-                cell for cell in self.get_valid_neighbors(breeze_cell[0], breeze_cell[1], world)
-                if cell not in self.no_pit_cells and cell not in self.confirmed_pit
-            ]
-            if len(candidates) == 1:
-                self.confirmed_pit.add(candidates[0])
-                self.safe_cells.discard(candidates[0])
+        # 여러 Breeze 정보의 교집합으로 Pit 위치 확정
+        if pit_candidate_sets:
+            common_pit = set.intersection(*pit_candidate_sets)
+
+            if len(common_pit) == 1:
+                pit_cell = next(iter(common_pit))
+                self.confirmed_pit.add(pit_cell)
+                self.safe_cells.discard(pit_cell)
+                self.possible_pit.discard(pit_cell)
+
+        self.possible_wumpus -= self.confirmed_pit
+        self.possible_pit -= self.confirmed_wumpus
+
+        if self.wumpus_destroyed:
+            self.possible_wumpus.clear()
+            self.confirmed_wumpus.clear()
 
         self.danger_cells = (
             self.confirmed_pit
@@ -204,18 +238,30 @@ class Agent:
                     self.possible_wumpus.discard(cell)
 
     def on_scream(self):
-        """Scream 퍼셉트 수신 시 Wumpus 관련 지식을 초기화한다."""
         self.wumpus_destroyed = True
+
+        # Wumpus 제거 후 해당 칸은 더 이상 위험하지 않음
+        for cell in self.confirmed_wumpus:
+            self.safe_cells.add(cell)
+            self.no_wumpus_cells.add(cell)
+            self.danger_cells.discard(cell)
+
         self.confirmed_wumpus.clear()
         self.possible_wumpus.clear()
         self.stench_cells.clear()
+
         self.danger_cells = self.confirmed_pit | self.possible_pit
 
     def is_wumpus_in_front(self):
-        """현재 방향 직선 상에 confirmed_wumpus 위치가 있으면 True."""
-        if not self.confirmed_wumpus or self.wumpus_destroyed or self.arrows == 0:
+        if (
+            not self.confirmed_wumpus
+            or self.wumpus_destroyed
+            or self.arrows == 0
+        ):
             return False
+
         r, c = self.row, self.col
+
         while True:
             if self.direction == "NORTH":
                 r -= 1
@@ -225,20 +271,29 @@ class Agent:
                 c -= 1
             elif self.direction == "EAST":
                 c += 1
-            if r < 0 or r > 4 or c < 0 or c > 4:
+
+            if r <= 0 or r >= 5 or c <= 0 or c >= 5:
                 return False
+
             if (r, c) in self.confirmed_wumpus:
                 return True
 
     def get_direction_to_wumpus(self):
-        """Wumpus와 같은 행 또는 열일 때 그 방향을 반환. 정렬 안 됐으면 None."""
         if not self.confirmed_wumpus or self.wumpus_destroyed:
             return None
+
         wr, wc = next(iter(self.confirmed_wumpus))
+
         if self.row == wr:
-            return "WEST" if wc < self.col else "EAST"
+            if wc < self.col:
+                return "WEST"
+            return "EAST"
+
         if self.col == wc:
-            return "NORTH" if wr < self.row else "SOUTH"
+            if wr < self.row:
+                return "NORTH"
+            return "SOUTH"
+
         return None
 
     def mark_death_cell(self, row, col, reason):
@@ -257,10 +312,62 @@ class Agent:
         self.current_target = None
         self.path_stack = []
 
+    def find_shortest_safe_path(self, start, goal, world):
+        queue = [(start, [])]
+        visited = {start}
+
+        while queue:
+            current, path = queue.pop(0)
+
+            if current == goal:
+                return path
+
+            row, col = current
+
+            for neighbor in self.get_valid_neighbors(row, col, world):
+                if neighbor in visited:
+                    continue
+
+                # 복귀는 실제 방문했던 칸만 사용
+                if neighbor not in self.visited and neighbor != goal:
+                    continue
+
+                if neighbor in self.danger_cells:
+                    continue
+
+                visited.add(neighbor)
+                queue.append((neighbor, path + [neighbor]))
+
+        return []
+
+    def prepare_return_home(self, world):
+        self.grab = True
+        self.returning_home = True
+
+        start = (self.row, self.col)
+        goal = (4, 1)
+
+        # Gold 획득 후에는 안전 칸 기준 최단 경로로 복귀
+        shortest_path = self.find_shortest_safe_path(start, goal, world)
+
+        if shortest_path:
+            self.return_path = shortest_path
+        else:
+            self.return_path = list(reversed(self.move_history))
+
+        self.current_target = None
+        self.path_stack = []
+
     def choose_target_cell(self, world):
         current = (self.row, self.col)
 
-        # 이미 목표가 있고, 아직 인접한 안전 칸이면 유지
+        if self.returning_home:
+            if self.return_path:
+                self.current_target = self.return_path[0]
+                return self.current_target
+
+            return None
+
         if (
             self.current_target is not None
             and self.is_adjacent(self.current_target)
@@ -269,7 +376,7 @@ class Agent:
         ):
             return self.current_target
 
-        # DFS: 방문하지 않은 안전한 인접 칸 우선 선택
+        # DFS: 안전한 미방문 칸 우선 탐색
         for cell in self.get_neighbors():
             r, c = cell
 
@@ -283,7 +390,7 @@ class Agent:
                 self.current_target = cell
                 return cell
 
-        # 갈 곳이 없으면 DFS stack을 이용해 이전 위치로 되돌아감
+        # DFS Backtracking
         while self.path_stack:
             back_cell = self.path_stack.pop()
 
@@ -312,8 +419,11 @@ class Agent:
 
         return self.direction
 
-    def choose_action(self, target):
-        if self.has_glitter:
+    def choose_action(self, target, percepts, world):
+        if self.grab and (self.row, self.col) == (4, 1):
+            return "Climb"
+
+        if self.has_glitter and not self.grab:
             return "Grab"
 
         right_turn = {
@@ -323,25 +433,35 @@ class Agent:
             "WEST": "NORTH"
         }
 
-        # Wumpus 확정 시 조준 및 발사 우선
-        if self.arrows > 0 and not self.wumpus_destroyed and self.confirmed_wumpus:
+        # 현재 위치에서 Stench를 느끼고 Wumpus 위치가 확정되면
+        # DFS 이동보다 Shoot 조준을 우선 수행
+        if (
+            "Stench" in percepts
+            and self.arrows > 0
+            and not self.wumpus_destroyed
+            and self.confirmed_wumpus
+        ):
             if self.is_wumpus_in_front():
                 return "Shoot"
+
             shoot_dir = self.get_direction_to_wumpus()
+
             if shoot_dir is not None:
                 if right_turn[self.direction] == shoot_dir:
                     return "TurnRight"
+
                 return "TurnLeft"
 
-        if target is None:
-            return None
+        # Shoot 조건이 아니면 DFS 목표 칸으로 이동
+        if target is not None:
+            target_direction = self.get_direction_to_target(target)
 
-        target_direction = self.get_direction_to_target(target)
+            if self.direction == target_direction:
+                return "GoForward"
 
-        if self.direction == target_direction:
-            return "GoForward"
+            if right_turn[self.direction] == target_direction:
+                return "TurnRight"
 
-        if right_turn[self.direction] == target_direction:
-            return "TurnRight"
+            return "TurnLeft"
 
-        return "TurnLeft"
+        return None
