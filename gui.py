@@ -128,11 +128,11 @@ def auto_step():
     percepts = game.get_percepts(row, col)
     agent.reasoning(percepts, game.world)
 
-    # 2. DFS로 다음 목표 칸 선택 및 Action 결정 (world 전달로 Shoot 포함)
+    # 2. DFS로 다음 목표 칸 선택
     target = agent.choose_target_cell(game.world)
-    action = agent.choose_action(target)
+    
 
-    if target is None or action is None:
+    if target is None:
         info_label.config(
             text="DFS 탐색 결과: 현재까지 안전하다고 판단한 이동 가능 칸이 없습니다."
         )
@@ -140,6 +140,7 @@ def auto_step():
         return
 
     # 3. Action 수행
+    action = agent.choose_action(target)
     if action == "TurnLeft":
         agent.turn_left()
         if agent.confirmed_wumpus and not agent.wumpus_destroyed:

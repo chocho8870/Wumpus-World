@@ -260,11 +260,6 @@ class Agent:
     def choose_target_cell(self, world):
         current = (self.row, self.col)
 
-        # 금을 주웠다면 1, 4로
-        if self.grab:
-            self.current_target = [1, 4]
-            return self.current_target
-
         # 이미 목표가 있고, 아직 인접한 안전 칸이면 유지
         if (
             self.current_target is not None
