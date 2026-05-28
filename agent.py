@@ -1,6 +1,6 @@
 class Agent:
     def __init__(self):
-        self.row = 4
+        self.row = 1
         self.col = 1
         self.direction = "EAST"
 
@@ -345,7 +345,7 @@ class Agent:
         self.returning_home = True
 
         start = (self.row, self.col)
-        goal = (4, 1)
+        goal = (1, 1)
 
         # Gold 획득 후에는 안전 칸 기준 최단 경로로 복귀
         shortest_path = self.find_shortest_safe_path(start, goal, world)
@@ -420,7 +420,7 @@ class Agent:
         return self.direction
 
     def choose_action(self, target, percepts, world):
-        if self.grab and (self.row, self.col) == (4, 1):
+        if self.grab and (self.row, self.col) == (1, 1):
             return "Climb"
 
         if self.has_glitter and not self.grab:

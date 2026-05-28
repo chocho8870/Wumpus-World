@@ -1,3 +1,6 @@
+import random
+
+
 class WumpusWorld:
     def __init__(self):
         self.size = 6
@@ -11,6 +14,8 @@ class WumpusWorld:
         self.SCREAM = False
 
         self.world = self.create_world()
+        self._place(self.WUMPUS)
+        self._place(self.PIT)
 
     def create_world(self):
         world = []
@@ -27,10 +32,17 @@ class WumpusWorld:
             world.append(line)
 
         world[4][4] = self.GOLD
-        world[2][2] = self.WUMPUS
-        world[3][3] = self.PIT
 
         return world
+    
+    def _place(self, item):
+        for x in range(1, 5):
+            for y in range(1, 5):
+                if (x, y) == (1, 1) or self.world[x][y] != self.EMPTY:
+                    continue
+                if random.random() < 1:
+                    self.world[x][y] = item
+                    return
 
     def get_percepts(self, row, col):
         percepts = []
