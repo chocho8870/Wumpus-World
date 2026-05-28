@@ -5,7 +5,7 @@ class Agent:
         self.direction = "EAST"
 
         self.visited = set()
-        self.safe_cells = {(1, 1), (4, 4)}
+        self.safe_cells = {(1, 1), (1, 2), (2, 1), (4, 4)}
 
         self.no_pit_cells = {(1, 1)}
         self.no_wumpus_cells = {(1, 1)}
@@ -365,7 +365,6 @@ class Agent:
             if self.return_path:
                 self.current_target = self.return_path[0]
                 return self.current_target
-
             return None
 
         if (
@@ -402,8 +401,8 @@ class Agent:
                 self.current_target = back_cell
                 return back_cell
 
-        self.current_target = None
-        return None
+        self.current_target = (4, 4)
+        return (4, 4)
 
     def get_direction_to_target(self, target):
         target_row, target_col = target
