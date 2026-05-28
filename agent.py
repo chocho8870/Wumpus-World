@@ -178,7 +178,8 @@ class Agent:
                     wumpus_cell = next(iter(common_wumpus))
                     self.confirmed_wumpus.add(wumpus_cell)
                     self.safe_cells.discard(wumpus_cell)
-                    self.possible_wumpus.clear()
+                    self.possible_wumpus.discard(wumpus_cell)
+                    # self.possible_wumpus.clear()
 
         pit_candidate_sets = []
 
@@ -205,7 +206,8 @@ class Agent:
                 pit_cell = next(iter(common_pit))
                 self.confirmed_pit.add(pit_cell)
                 self.safe_cells.discard(pit_cell)
-                self.possible_pit.clear()
+                self.possible_pit.discard(pit_cell)
+                # self.possible_pit.clear()
 
         self.possible_wumpus -= self.confirmed_pit
         self.possible_pit -= self.confirmed_wumpus
