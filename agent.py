@@ -464,7 +464,10 @@ class Agent:
 
             return "TurnLeft"
         
-        return "Forward"
+        if not "Bump" in percepts:
+            return "GoForward"
+        
+        return "TurnLeft"
 
     def getForwardPosition(self):
         if self.direction == "NORTH":
@@ -476,6 +479,3 @@ class Agent:
         if self.direction == "EAST":
             return self.row, self.col + 1
         
-
-    def dead(self):
-        self.mark_death_cell(self.row, self.col, reason="unknown")
