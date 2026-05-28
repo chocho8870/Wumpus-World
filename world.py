@@ -26,7 +26,7 @@ class WumpusWorld:
 
             world.append(line)
 
-        world[1][4] = self.GOLD
+        world[4][4] = self.GOLD
         world[2][2] = self.WUMPUS
         world[3][3] = self.PIT
 

@@ -5,10 +5,10 @@ class Agent:
         self.direction = "EAST"
 
         self.visited = set()
-        self.safe_cells = {(4, 1)}
+        self.safe_cells = {(1, 1)}
 
-        self.no_pit_cells = {(4, 1)}
-        self.no_wumpus_cells = {(4, 1)}
+        self.no_pit_cells = {(1, 1)}
+        self.no_wumpus_cells = {(1, 1)}
 
         self.possible_pit = set()
         self.possible_wumpus = set()
@@ -40,9 +40,9 @@ class Agent:
         return self.direction
 
     def reset_position(self):
-        self.row = 4
+        self.row = 1
         self.col = 1
-        self.direction = "EAST"
+        self.direction = "SOUTH"
 
         self.path_stack = []
         self.current_target = None
