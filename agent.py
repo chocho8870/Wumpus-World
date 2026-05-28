@@ -1,14 +1,14 @@
 class Agent:
     def __init__(self):
-        self.row = 4
+        self.row = 1
         self.col = 1
         self.direction = "EAST"
 
         self.visited = set()
-        self.safe_cells = {(4, 1)}
+        self.safe_cells = {(1, 1), (1, 2), (2, 1), (4, 4)}
 
-        self.no_pit_cells = {(4, 1)}
-        self.no_wumpus_cells = {(4, 1)}
+        self.no_pit_cells = {(1, 1)}
+        self.no_wumpus_cells = {(1, 1)}
 
         self.possible_pit = set()
         self.possible_wumpus = set()
@@ -40,7 +40,7 @@ class Agent:
         return self.direction
 
     def reset_position(self):
-        self.row = 4
+        self.row = 1
         self.col = 1
         self.direction = "EAST"
 
@@ -179,6 +179,7 @@ class Agent:
                     self.confirmed_wumpus.add(wumpus_cell)
                     self.safe_cells.discard(wumpus_cell)
                     self.possible_wumpus.discard(wumpus_cell)
+                    # self.possible_wumpus.clear()
 
         pit_candidate_sets = []
 
@@ -206,6 +207,7 @@ class Agent:
                 self.confirmed_pit.add(pit_cell)
                 self.safe_cells.discard(pit_cell)
                 self.possible_pit.discard(pit_cell)
+                # self.possible_pit.clear()
 
         self.possible_wumpus -= self.confirmed_pit
         self.possible_pit -= self.confirmed_wumpus
@@ -345,7 +347,7 @@ class Agent:
         self.returning_home = True
 
         start = (self.row, self.col)
-        goal = (4, 1)
+        goal = (1, 1)
 
         # Gold 획득 후에는 안전 칸 기준 최단 경로로 복귀
         shortest_path = self.find_shortest_safe_path(start, goal, world)
@@ -365,7 +367,6 @@ class Agent:
             if self.return_path:
                 self.current_target = self.return_path[0]
                 return self.current_target
-
             return None
 
         if (
@@ -402,8 +403,8 @@ class Agent:
                 self.current_target = back_cell
                 return back_cell
 
-        self.current_target = None
-        return None
+        self.current_target = (4, 4)
+        return (4, 4)
 
     def get_direction_to_target(self, target):
         target_row, target_col = target
@@ -420,7 +421,7 @@ class Agent:
         return self.direction
 
     def choose_action(self, target, percepts, world):
-        if self.grab and (self.row, self.col) == (4, 1):
+        if self.grab and (self.row, self.col) == (1, 1):
             return "Climb"
 
         if self.has_glitter and not self.grab:
@@ -463,5 +464,9 @@ class Agent:
                 return "TurnRight"
 
             return "TurnLeft"
-
-        return None
+        
+        if not "Bump" in percepts:
+            return "GoForward"
+        
+        return "TurnLeft"
+        
