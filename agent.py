@@ -5,7 +5,7 @@ class Agent:
         self.direction = "EAST"
 
         self.visited = set()
-        self.safe_cells = {(1, 1)}
+        self.safe_cells = {(1, 1), (4, 4)}
 
         self.no_pit_cells = {(1, 1)}
         self.no_wumpus_cells = {(1, 1)}
@@ -463,5 +463,19 @@ class Agent:
                 return "TurnRight"
 
             return "TurnLeft"
+        
+        return "Forward"
 
-        return None
+    def getForwardPosition(self):
+        if self.direction == "NORTH":
+            return self.row - 1, self.col
+        if self.direction == "SOUTH":
+            return self.row + 1, self.col
+        if self.direction == "WEST":
+            return self.row, self.col - 1
+        if self.direction == "EAST":
+            return self.row, self.col + 1
+        
+
+    def dead(self):
+        self.mark_death_cell(self.row, self.col, reason="unknown")

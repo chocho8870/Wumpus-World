@@ -40,7 +40,7 @@ class WumpusWorld:
             for y in range(1, 5):
                 if (x, y) == (1, 1) or self.world[x][y] != self.EMPTY:
                     continue
-                if random.random() < 1:
+                if random.random() < 0.1:
                     self.world[x][y] = item
                     return
 
