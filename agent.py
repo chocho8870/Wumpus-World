@@ -401,8 +401,8 @@ class Agent:
                 self.current_target = back_cell
                 return back_cell
 
-        self.current_target = (4, 4)
-        return (4, 4)
+        self.current_target = None
+        return None
 
     def get_direction_to_target(self, target):
         target_row, target_col = target
