@@ -467,14 +467,4 @@ class Agent:
             return "GoForward"
         
         return "TurnLeft"
-
-    def getForwardPosition(self):
-        if self.direction == "NORTH":
-            return self.row - 1, self.col
-        if self.direction == "SOUTH":
-            return self.row + 1, self.col
-        if self.direction == "WEST":
-            return self.row, self.col - 1
-        if self.direction == "EAST":
-            return self.row, self.col + 1
         
