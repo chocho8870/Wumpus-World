@@ -42,7 +42,7 @@ class Agent:
     def reset_position(self):
         self.row = 1
         self.col = 1
-        self.direction = "SOUTH"
+        self.direction = "EAST"
 
         self.path_stack = []
         self.current_target = None
