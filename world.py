@@ -36,14 +36,19 @@ class WumpusWorld:
         return world
     
     def _place(self, item):
+        empty_cells = []
+
         for x in range(1, 5):
             for y in range(1, 5):
-                if (x, y) in [(1, 1), (1, 2), (2, 1)] or self.world[x][y] != self.EMPTY:
+                if (x, y) in [(1, 1), (1, 2), (2, 1)]:
                     continue
-                if random.random() < 0.1:
-                    self.world[x][y] = item
-                    return
-        self.world[random.randint(2, 3)][random.randint(2, 3)] = item
+
+                if self.world[x][y] == self.EMPTY:
+                    empty_cells.append((x, y))
+
+        if empty_cells:
+            x, y = random.choice(empty_cells)
+            self.world[x][y] = item
 
     def get_percepts(self, row, col):
         percepts = []
