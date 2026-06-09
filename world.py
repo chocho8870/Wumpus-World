@@ -43,8 +43,14 @@ class WumpusWorld:
                 if (x, y) in [(1, 1), (1, 2), (2, 1)]:
                     continue
 
-                if self.world[x][y] == self.EMPTY:
-                    empty_cells.append((x, y))
+                if self.world[x][y] != self.EMPTY:
+                    continue
+
+                empty_cells.append((x, y))
+
+                if random.random() < 0.1:
+                    self.world[x][y] = item
+                    return
 
         if empty_cells:
             x, y = random.choice(empty_cells)
