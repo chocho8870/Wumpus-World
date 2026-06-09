@@ -152,8 +152,10 @@ class Agent:
         self.possible_pit.clear()
         self.possible_wumpus.clear()
 
+
         if not self.wumpus_destroyed:
             wumpus_candidate_sets = []
+            all_wumpus_candidates = set()
 
             for stench_cell in self.stench_cells:
                 candidates = set()
@@ -168,20 +170,32 @@ class Agent:
 
                 if candidates:
                     wumpus_candidate_sets.append(candidates)
+                    all_wumpus_candidates.update(candidates)
                     self.possible_wumpus.update(candidates)
 
-            # 여러 Stench 정보의 교집합으로 Wumpus 위치 확정
+        # 여러 Stench 정보의 교집합으로 Wumpus 위치 확정
             if wumpus_candidate_sets:
                 common_wumpus = set.intersection(*wumpus_candidate_sets)
 
                 if len(common_wumpus) == 1:
                     wumpus_cell = next(iter(common_wumpus))
+
                     self.confirmed_wumpus.add(wumpus_cell)
                     self.safe_cells.discard(wumpus_cell)
                     self.possible_wumpus.discard(wumpus_cell)
-                    # self.possible_wumpus.clear()
 
+                # Wumpus로 확정되지 않은 기존 후보들은 Wumpus가 아닌 칸으로 처리
+                    other_wumpus_candidates = all_wumpus_candidates - {wumpus_cell}
+
+                    for cell in other_wumpus_candidates:
+                        self.no_wumpus_cells.add(cell)
+                        self.possible_wumpus.discard(cell)
+
+    # =========================
+    # Pit 후보 추론
+    # =========================
         pit_candidate_sets = []
+        all_pit_candidates = set()
 
         for breeze_cell in self.breeze_cells:
             candidates = set()
@@ -196,26 +210,40 @@ class Agent:
 
             if candidates:
                 pit_candidate_sets.append(candidates)
+                all_pit_candidates.update(candidates)
                 self.possible_pit.update(candidates)
 
-        # 여러 Breeze 정보의 교집합으로 Pit 위치 확정
+    # 여러 Breeze 정보의 교집합으로 Pit 위치 확정
         if pit_candidate_sets:
             common_pit = set.intersection(*pit_candidate_sets)
 
             if len(common_pit) == 1:
                 pit_cell = next(iter(common_pit))
+
                 self.confirmed_pit.add(pit_cell)
                 self.safe_cells.discard(pit_cell)
                 self.possible_pit.discard(pit_cell)
-                # self.possible_pit.clear()
 
+            # Pit으로 확정되지 않은 기존 후보들은 Pit이 아닌 칸으로 처리
+                other_pit_candidates = all_pit_candidates - {pit_cell}
+
+                for cell in other_pit_candidates:
+                    self.no_pit_cells.add(cell)
+                    self.possible_pit.discard(cell)
+
+    # 서로 확정된 위험은 반대 후보에서 제거
         self.possible_wumpus -= self.confirmed_pit
         self.possible_pit -= self.confirmed_wumpus
 
+    # Wumpus가 제거된 경우 Wumpus 관련 위험 정보 초기화
         if self.wumpus_destroyed:
             self.possible_wumpus.clear()
             self.confirmed_wumpus.clear()
 
+    # no_pit, no_wumpus가 모두 확인된 칸은 안전 칸으로 갱신
+        self.update_safe_cells(world)
+
+    # 최종 위험 칸 목록 갱신
         self.danger_cells = (
             self.confirmed_pit
             | self.confirmed_wumpus
@@ -469,4 +497,3 @@ class Agent:
             return "GoForward"
         
         return "TurnLeft"
-        
